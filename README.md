@@ -1,6 +1,6 @@
 # Calendar & Notes App
 
-A comprehensive Android app that combines calendar, todo management, and note-taking capabilities.
+A comprehensive Android app built with Kotlin that combines calendar, todo management, and note-taking capabilities.
 
 ## Features
 
@@ -34,10 +34,13 @@ A comprehensive Android app that combines calendar, todo management, and note-ta
 ## Technical Details
 
 ### Architecture
+- **Language**: Kotlin
 - **MVVM Pattern**: ViewModel separates UI from business logic
 - **SQLite Database**: Local data persistence
 - **Repository Pattern**: Clean data access layer
 - **LiveData**: Reactive UI updates
+- **ViewBinding**: Type-safe view access
+- **Coroutines**: Asynchronous operations
 
 ### Database Schema
 - **Categories**: id, name, color, created_at
@@ -97,21 +100,26 @@ A comprehensive Android app that combines calendar, todo management, and note-ta
 - Cloud sync
 
 ## Dependencies
-- AndroidX Core, AppCompat, Material Design
-- ViewModel and LiveData
+- AndroidX Core KTX, AppCompat, Material Design
+- ViewModel and LiveData (lifecycle-viewmodel-ktx, lifecycle-livedata-ktx)
 - RecyclerView
+- CardView
 - ViewPager2
-- Coroutines for async operations
+- ViewBinding
+- Kotlin Coroutines for async operations
 
 ## Requirements
 - Android SDK 24+ (Android 7.0 Nougat and above)
+- Target SDK: 36 (Android 15)
 - Kotlin 1.9.0
-- Gradle 8.x
+- Android Gradle Plugin 9.0.0
+- Java 11 compatibility
 
 ## Building
 1. Open project in Android Studio
 2. Sync Gradle files
-3. Run on emulator or physical device
+3. Run on emulator or physical device (Android 7.0+)
 
-## License
-Educational project for school assignment.
+## Project Information
+Educational project for CS 4270 - Mobile Application Development
+Spring 2026
