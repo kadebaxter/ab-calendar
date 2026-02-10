@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- Time Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:orientation="horizontal"
+        android:minHeight="60dp"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <!-- Time Label -->
+        <TextView
+            android:id="@+id/tvTimeLabel"
+            android:layout_width="70dp"
+            android:layout_height="match_parent"
+            android:text="8:00 AM"
+            android:textSize="14sp"
+            android:textColor="@android:color/darker_gray"
+            android:padding="8dp"
+            android:gravity="center" />
+
+        <!-- Divider Line -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@android:color/darker_gray"
+            android:alpha="0.3" />
+
+        <!-- Event Content Area -->
+        <FrameLayout
+            android:id="@+id/eventContentArea"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:padding="4dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+
+            <!-- Event cards will be added here dynamically -->
+            <FrameLayout
+                android:id="@+id/eventsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- Bottom Divider Line -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:alpha="0.2" />
+
+</LinearLayout>
