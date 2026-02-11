@@ -51,6 +51,7 @@ class DayScheduleAdapter(
         val tvTimeLabel: TextView = view.findViewById(R.id.tvTimeLabel)
         val eventsContainer: ViewGroup = view.findViewById(R.id.eventsContainer)
         val eventContentArea: View = view.findViewById(R.id.eventContentArea)
+        val currentTimeIndicator: View = view.findViewById(R.id.currentTimeIndicator)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TimeSlotViewHolder {
@@ -97,6 +98,45 @@ class DayScheduleAdapter(
             if (timeSlot.events.isEmpty()) {
                 onTimeSlotClick(timeSlot.hour)
             }
+        }
+
+        // Show current time indicator if this is today and the current hour
+        showCurrentTimeIndicator(holder, timeSlot.hour)
+    }
+
+    private fun showCurrentTimeIndicator(holder: TimeSlotViewHolder, hour: Int) {
+        val now = Calendar.getInstance()
+        val today = Calendar.getInstance()
+        today.timeInMillis = baseDate.timeInMillis
+        
+        // Check if this is today
+        val isToday = now.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                     now.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
+        
+        if (!isToday) {
+            holder.currentTimeIndicator.visibility = View.GONE
+            return
+        }
+        
+        val currentHour = now.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = now.get(Calendar.MINUTE)
+        
+        // Show indicator only if current time is within this hour slot
+        if (currentHour == hour) {
+            holder.currentTimeIndicator.visibility = View.VISIBLE
+            
+            // Position the indicator based on minutes (0-59 minutes within the hour slot height)
+            holder.currentTimeIndicator.post {
+                val slotHeight = holder.eventContentArea.height
+                val minutePercent = currentMinute / 60f
+                val topMargin = (slotHeight * minutePercent).toInt()
+                
+                val params = holder.currentTimeIndicator.layoutParams as android.widget.FrameLayout.LayoutParams
+                params.topMargin = topMargin
+                holder.currentTimeIndicator.layoutParams = params
+            }
+        } else {
+            holder.currentTimeIndicator.visibility = View.GONE
         }
     }
     
@@ -218,6 +258,11 @@ class DayScheduleAdapter(
         }
         
         timeSlots = slots
+        notifyDataSetChanged()
+    }
+
+    fun refreshCurrentTimeIndicator() {
+        // Refresh only the visible items to update the current time line
         notifyDataSetChanged()
     }
 

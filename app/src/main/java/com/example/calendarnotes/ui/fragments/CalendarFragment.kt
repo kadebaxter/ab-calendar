@@ -3,6 +3,8 @@ package com.example.calendarnotes.ui.fragments
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,6 +34,15 @@ class CalendarFragment : Fragment() {
     private lateinit var btnNextDay: ImageButton
     private lateinit var btnShowCalendar: ImageButton
     private var currentDate: Calendar = Calendar.getInstance()
+    
+    // Handler for updating current time indicator
+    private val timeUpdateHandler = Handler(Looper.getMainLooper())
+    private val timeUpdateRunnable = object : Runnable {
+        override fun run() {
+            dayScheduleAdapter.refreshCurrentTimeIndicator()
+            timeUpdateHandler.postDelayed(this, 60000) // Update every minute
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -139,6 +150,18 @@ class CalendarFragment : Fragment() {
         viewModel.calendarEvents.observe(viewLifecycleOwner) {
             loadEventsForDate()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Start updating the current time indicator every minute
+        timeUpdateHandler.post(timeUpdateRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Stop updating when fragment is not visible
+        timeUpdateHandler.removeCallbacks(timeUpdateRunnable)
     }
 
     private fun showMonthCalendarDialog() {

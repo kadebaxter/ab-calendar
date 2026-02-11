@@ -8,7 +8,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     companion object {
         private const val DATABASE_NAME = "calendar_notes.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
 
         // Table names
         const val TABLE_CATEGORIES = "categories"
@@ -57,6 +57,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val COL_EVENT_CATEGORY_ID = "category_id"
         const val COL_EVENT_TODO_ITEM_ID = "todo_item_id"
         const val COL_EVENT_CREATED_AT = "created_at"
+        const val COL_EVENT_NOTIFICATION_ENABLED = "notification_enabled"
+        const val COL_EVENT_NOTIFICATION_MINUTES_BEFORE = "notification_minutes_before"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -122,6 +124,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 $COL_EVENT_CATEGORY_ID INTEGER,
                 $COL_EVENT_TODO_ITEM_ID INTEGER,
                 $COL_EVENT_CREATED_AT INTEGER NOT NULL,
+                $COL_EVENT_NOTIFICATION_ENABLED INTEGER NOT NULL DEFAULT 1,
+                $COL_EVENT_NOTIFICATION_MINUTES_BEFORE INTEGER NOT NULL DEFAULT 30,
                 FOREIGN KEY($COL_EVENT_CATEGORY_ID) REFERENCES $TABLE_CATEGORIES($COL_CAT_ID) ON DELETE SET NULL,
                 FOREIGN KEY($COL_EVENT_TODO_ITEM_ID) REFERENCES $TABLE_TODO_ITEMS($COL_TODO_ID) ON DELETE SET NULL
             )
@@ -129,12 +133,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_CALENDAR_EVENTS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_NOTES")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_TODO_ITEMS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_SUB_CATEGORIES")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_CATEGORIES")
-        onCreate(db)
+        if (oldVersion < 2) {
+            // Add notification columns to calendar_events table
+            db.execSQL("ALTER TABLE $TABLE_CALENDAR_EVENTS ADD COLUMN $COL_EVENT_NOTIFICATION_ENABLED INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE $TABLE_CALENDAR_EVENTS ADD COLUMN $COL_EVENT_NOTIFICATION_MINUTES_BEFORE INTEGER NOT NULL DEFAULT 30")
+        }
     }
 
     override fun onConfigure(db: SQLiteDatabase) {

@@ -264,6 +264,8 @@ class CalendarNotesRepository(context: Context) {
             put(DatabaseHelper.COL_EVENT_CATEGORY_ID, event.categoryId)
             put(DatabaseHelper.COL_EVENT_TODO_ITEM_ID, event.todoItemId)
             put(DatabaseHelper.COL_EVENT_CREATED_AT, event.createdAt)
+            put(DatabaseHelper.COL_EVENT_NOTIFICATION_ENABLED, if (event.notificationEnabled) 1 else 0)
+            put(DatabaseHelper.COL_EVENT_NOTIFICATION_MINUTES_BEFORE, event.notificationMinutesBefore)
         }
         return db.insert(DatabaseHelper.TABLE_CALENDAR_EVENTS, null, values)
     }
@@ -290,7 +292,9 @@ class CalendarNotesRepository(context: Context) {
                                      else it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CATEGORY_ID)),
                         todoItemId = if (it.isNull(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TODO_ITEM_ID))) null
                                      else it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TODO_ITEM_ID)),
-                        createdAt = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CREATED_AT))
+                        createdAt = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CREATED_AT)),
+                        notificationEnabled = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_NOTIFICATION_ENABLED)) == 1,
+                        notificationMinutesBefore = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_NOTIFICATION_MINUTES_BEFORE))
                     )
                 )
             }
@@ -323,7 +327,9 @@ class CalendarNotesRepository(context: Context) {
                                      else it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CATEGORY_ID)),
                         todoItemId = if (it.isNull(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TODO_ITEM_ID))) null
                                      else it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TODO_ITEM_ID)),
-                        createdAt = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CREATED_AT))
+                        createdAt = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CREATED_AT)),
+                        notificationEnabled = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_NOTIFICATION_ENABLED)) == 1,
+                        notificationMinutesBefore = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_NOTIFICATION_MINUTES_BEFORE))
                     )
                 )
             }
@@ -339,6 +345,8 @@ class CalendarNotesRepository(context: Context) {
             put(DatabaseHelper.COL_EVENT_START_TIME, event.startTime)
             put(DatabaseHelper.COL_EVENT_END_TIME, event.endTime)
             put(DatabaseHelper.COL_EVENT_CATEGORY_ID, event.categoryId)
+            put(DatabaseHelper.COL_EVENT_NOTIFICATION_ENABLED, if (event.notificationEnabled) 1 else 0)
+            put(DatabaseHelper.COL_EVENT_NOTIFICATION_MINUTES_BEFORE, event.notificationMinutesBefore)
         }
         return db.update(DatabaseHelper.TABLE_CALENDAR_EVENTS, values, "${DatabaseHelper.COL_EVENT_ID} = ?", arrayOf(event.id.toString()))
     }
@@ -346,6 +354,37 @@ class CalendarNotesRepository(context: Context) {
     fun deleteCalendarEvent(id: Long): Int {
         val db = dbHelper.writableDatabase
         return db.delete(DatabaseHelper.TABLE_CALENDAR_EVENTS, "${DatabaseHelper.COL_EVENT_ID} = ?", arrayOf(id.toString()))
+    }
+    
+    fun getCalendarEventById(id: Long): CalendarEvent? {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.TABLE_CALENDAR_EVENTS,
+            null,
+            "${DatabaseHelper.COL_EVENT_ID} = ?",
+            arrayOf(id.toString()),
+            null, null, null
+        )
+
+        cursor.use {
+            if (it.moveToFirst()) {
+                return CalendarEvent(
+                    id = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_ID)),
+                    title = it.getString(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TITLE)),
+                    description = it.getString(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_DESCRIPTION)) ?: "",
+                    startTime = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_START_TIME)),
+                    endTime = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_END_TIME)),
+                    categoryId = if (it.isNull(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CATEGORY_ID))) null
+                                 else it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CATEGORY_ID)),
+                    todoItemId = if (it.isNull(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TODO_ITEM_ID))) null
+                                 else it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_TODO_ITEM_ID)),
+                    createdAt = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_CREATED_AT)),
+                    notificationEnabled = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_NOTIFICATION_ENABLED)) == 1,
+                    notificationMinutesBefore = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_EVENT_NOTIFICATION_MINUTES_BEFORE))
+                )
+            }
+        }
+        return null
     }
     
     fun updateEventTime(id: Long, newStartTime: Long, newEndTime: Long): Int {

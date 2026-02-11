@@ -8,5 +8,7 @@ data class CalendarEvent(
     val endTime: Long,
     val categoryId: Long?,
     val todoItemId: Long? = null, // Link to todo if created from todo
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val notificationEnabled: Boolean = true,
+    val notificationMinutesBefore: Int = 30
 )

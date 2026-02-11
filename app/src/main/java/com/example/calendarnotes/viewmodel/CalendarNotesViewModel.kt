@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.calendarnotes.data.models.*
 import com.example.calendarnotes.data.repository.CalendarNotesRepository
+import com.example.calendarnotes.notifications.NotificationScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -179,32 +180,59 @@ class CalendarNotesViewModel(application: Application) : AndroidViewModel(applic
 
     fun addCalendarEvent(title: String, description: String, startTime: Long, endTime: Long, categoryId: Long?) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            val eventId = withContext(Dispatchers.IO) {
                 repository.insertCalendarEvent(
                     CalendarEvent(
                         title = title,
                         description = description,
                         startTime = startTime,
                         endTime = endTime,
-                        categoryId = categoryId
+                        categoryId = categoryId,
+                        notificationEnabled = true,
+                        notificationMinutesBefore = 30
                     )
                 )
             }
+            
+            // Schedule notification for the new event
+            if (eventId > 0) {
+                withContext(Dispatchers.IO) {
+                    val event = repository.getCalendarEventById(eventId)
+                    event?.let {
+                        NotificationScheduler.scheduleNotification(getApplication(), it)
+                    }
+                }
+            }
+            
             loadCalendarEvents()
         }
     }
 
     fun createEventFromTodo(todoId: Long, startTime: Long, endTime: Long) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            val eventId = withContext(Dispatchers.IO) {
                 repository.createEventFromTodo(todoId, startTime, endTime)
             }
+            
+            // Schedule notification for the new event
+            if (eventId > 0) {
+                withContext(Dispatchers.IO) {
+                    val event = repository.getCalendarEventById(eventId)
+                    event?.let {
+                        NotificationScheduler.scheduleNotification(getApplication(), it)
+                    }
+                }
+            }
+            
             loadCalendarEvents()
         }
     }
 
     fun deleteCalendarEvent(id: Long) {
         viewModelScope.launch {
+            // Cancel the notification before deleting
+            NotificationScheduler.cancelNotification(getApplication(), id)
+            
             withContext(Dispatchers.IO) {
                 repository.deleteCalendarEvent(id)
             }
@@ -216,6 +244,24 @@ class CalendarNotesViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 repository.updateEventTime(id, newStartTime, newEndTime)
+                
+                // Reschedule notification with new time
+                val event = repository.getCalendarEventById(id)
+                event?.let {
+                    NotificationScheduler.updateNotification(getApplication(), it)
+                }
+            }
+            loadCalendarEvents()
+        }
+    }
+    
+    fun updateCalendarEvent(event: CalendarEvent) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                repository.updateCalendarEvent(event)
+                
+                // Reschedule notification with updated settings
+                NotificationScheduler.updateNotification(getApplication(), event)
             }
             loadCalendarEvents()
         }

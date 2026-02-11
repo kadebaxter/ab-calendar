@@ -54,6 +54,29 @@
                 android:clipChildren="false"
                 android:clipToPadding="false" />
 
+            <!-- Current Time Indicator -->
+            <LinearLayout
+                android:id="@+id/currentTimeIndicator"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:gravity="center_vertical">
+
+                <!-- Circle indicator -->
+                <View
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/current_time_circle" />
+
+                <!-- Line -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="#F44336" />
+
+            </LinearLayout>
+
         </FrameLayout>
 
     </LinearLayout>
