@@ -16,7 +16,9 @@ data class EventLayoutInfo(
 )
 
 object EventLayoutCalculator {
-    
+    private const val DP_PER_MINUTE = 1f
+    private const val SPACING_DP = 4
+
     /**
      * Checks if two events overlap in time
      */
@@ -55,39 +57,48 @@ object EventLayoutCalculator {
         return columnAssignments
     }
     
+    /** Horizontal card bounds inside the events container (matches [calculateEventLayout]). */
+    fun horizontalBounds(
+        column: Int,
+        totalColumns: Int,
+        containerWidth: Int,
+        density: Float
+    ): Pair<Int, Int> {
+        val columns = totalColumns.coerceAtLeast(1)
+        val spacingPx = (SPACING_DP * density).toInt()
+        val columnWidth = containerWidth / columns
+        val left = column * columnWidth + spacingPx / 2
+        val width = (columnWidth - spacingPx).coerceAtLeast(1)
+        return left to (left + width)
+    }
+
     /**
-     * Calculate layout info for an event given its column assignment
+     * Calculate layout info for an event given its column assignment.
+     * Cards are hosted on their start-hour row and may overflow into later hours.
      */
     fun calculateEventLayout(
         event: CalendarEvent,
         column: Int,
         totalColumns: Int,
         containerWidth: Int,
-        density: Float,
-        baseDate: java.util.Calendar
+        density: Float
     ): EventLayoutInfo {
-        val spacingDp = 4
-        val spacingPx = (spacingDp * density).toInt()
-        val cardMarginDp = 2 // The card has 2dp margin on all sides
-        val cardMarginPx = (cardMarginDp * density).toInt()
-        
-        // Calculate dimensions - account for card margins
-        val columnWidth = containerWidth / totalColumns
-        val leftMarginPx = column * columnWidth
-        val widthPx = columnWidth - spacingPx - (cardMarginPx * 2) // Remove both left and right margins
-        
-        // Calculate vertical positioning
-        val durationMinutes = (event.endTime - event.startTime) / (1000 * 60)
-        val heightPerMinute = 1f
-        val eventHeightDp = (durationMinutes * heightPerMinute).toInt().coerceAtLeast(50)
-        val heightPx = (eventHeightDp * density).toInt()
-        
+        val (leftMarginPx, right) = horizontalBounds(column, totalColumns, containerWidth, density)
+        val widthPx = (right - leftMarginPx).coerceAtLeast(1)
+
+        // 1dp per minute matches the 60dp hour rows. Keep height strictly within
+        // the event duration so back-to-back events (e.g. 1:00-1:30 / 1:30-...)
+        // meet at the boundary instead of overlapping.
+        val durationMinutes = ((event.endTime - event.startTime) / (1000 * 60))
+            .toInt()
+            .coerceAtLeast(1)
+        val heightPx = (durationMinutes * DP_PER_MINUTE * density).toInt().coerceAtLeast(1)
+
         val eventStartCal = java.util.Calendar.getInstance()
         eventStartCal.timeInMillis = event.startTime
         val minutesPastHour = eventStartCal.get(java.util.Calendar.MINUTE)
-        val topMarginDp = minutesPastHour * 1f
-        val topMarginPx = (topMarginDp * density).toInt()
-        
+        val topMarginPx = (minutesPastHour * DP_PER_MINUTE * density).toInt()
+
         return EventLayoutInfo(
             column = column,
             totalColumns = totalColumns,

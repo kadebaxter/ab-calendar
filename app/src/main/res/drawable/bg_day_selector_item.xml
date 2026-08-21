@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Today + selected: blue tint + cyan outline -->
+    <item android:state_selected="true" android:state_activated="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/day_selector_today_fill" />
+            <stroke
+                android:width="2dp"
+                android:color="@color/day_selector_selected_stroke" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <!-- Selected other day: cyan outline -->
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/day_selector_selected_fill" />
+            <stroke
+                android:width="2dp"
+                android:color="@color/day_selector_selected_stroke" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <!-- Today (not selected): soft blue tint so it's easy to find while scrolling -->
+    <item android:state_activated="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/day_selector_today_fill" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</selector>

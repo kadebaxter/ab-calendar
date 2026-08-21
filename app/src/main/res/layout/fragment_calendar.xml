@@ -1,90 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/fragment_background">
 
-    <!-- Date Navigation Header -->
+    <!-- Day view: selector + hour schedule -->
     <LinearLayout
-        android:id="@+id/dateNavigation"
+        android:id="@+id/dayViewContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical"
-        android:background="?attr/colorPrimary"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/btnPreviousDay"
-            android:layout_width="48dp"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDaySelector"
+            android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_media_previous"
-            android:contentDescription="Previous day"
-            app:tint="@android:color/black" />
+            android:background="@color/day_selector_background"
+            android:clipToPadding="false"
+            android:elevation="4dp"
+            android:overScrollMode="never"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp" />
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:id="@+id/llAllDayEvents"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:background="@color/day_selector_background"
+            android:elevation="4dp"
             android:orientation="vertical"
-            android:gravity="center">
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/tvCurrentDate"
-                android:layout_width="wrap_content"
+        <!-- Clip at the ScrollView edge so cards never paint over the date strip.
+             Hour-row overflow inside the grid still works via llDaySchedule. -->
+        <com.example.calendarnotes.ui.DayScheduleScrollView
+            android:id="@+id/svDaySchedule"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@color/fragment_background"
+            android:clipChildren="true"
+            android:clipToPadding="true"
+            android:fillViewport="true"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/llDaySchedule"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Friday, Aug 11"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/black" />
-
-            <TextView
-                android:id="@+id/tvCurrentYear"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2023"
-                android:textSize="14sp"
-                android:textColor="@android:color/black"
-                android:alpha="0.8" />
-
-        </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/btnNextDay"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_media_next"
-            android:contentDescription="Next day"
-            app:tint="@android:color/black" />
-
-        <ImageButton
-            android:id="@+id/btnShowCalendar"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_today"
-            android:contentDescription="Show calendar"
-            app:tint="@android:color/black" />
-
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:orientation="vertical" />
+        </com.example.calendarnotes.ui.DayScheduleScrollView>
     </LinearLayout>
 
-    <!-- Day Schedule -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvDaySchedule"
+    <!-- Week / month view -->
+    <LinearLayout
+        android:id="@+id/weekMonthContainer"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:background="@color/fragment_background"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/dateNavigation"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <LinearLayout
+            android:id="@+id/monthViewContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/weekdayHeaderRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingBottom="8dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMonthGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvAgenda"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <TextView
+                android:id="@+id/tvAgendaEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/no_events_in_range"
+                android:textColor="@android:color/darker_gray"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

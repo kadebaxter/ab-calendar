@@ -5,4 +5,14 @@
     <color name="light_pink">#FFE0B0C0</color>
     <color name="light_blue">#FF42A5F5</color>
     <color name="fragment_background">@android:color/white</color>
+    <color name="calendar_header_background">#FF6B1B4A</color>
+    <color name="calendar_header_text">#FFFFFFFF</color>
+    <color name="day_selector_background">#FFF5F5F5</color>
+    <color name="day_selector_text">#FF212121</color>
+    <color name="day_selector_selected_stroke">#FF4FC3F7</color>
+    <color name="day_selector_selected_fill">#FFE3F7FC</color>
+    <color name="day_selector_today_fill">#334FC3F7</color>
+    <color name="agenda_day_header_background">#FFE8D4DF</color>
+    <color name="agenda_day_header_title">#FF6B1B4A</color>
+    <color name="agenda_day_header_subtitle">#FF8A4A6E</color>
 </resources>

@@ -5,6 +5,7 @@ data class Note(
     val categoryId: Long?,
     val title: String,
     val content: String,
+    val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

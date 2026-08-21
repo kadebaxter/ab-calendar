@@ -11,16 +11,16 @@ import com.example.calendarnotes.R
 import com.example.calendarnotes.data.models.Category
 
 class CategoryAdapter(
-    private var categories: List<Category>,
-    private val onAddSubCategory: (Category) -> Unit,
+    private val onEdit: (Category) -> Unit,
     private val onDelete: (Category) -> Unit
 ) : RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder>() {
+
+    private var categories: List<Category> = emptyList()
 
     class CategoryViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val colorIndicator: View = view.findViewById(R.id.colorIndicator)
         val tvName: TextView = view.findViewById(R.id.tvCategoryName)
-        val tvSubCategoryCount: TextView = view.findViewById(R.id.tvSubCategoryCount)
-        val btnAddSubCategory: ImageButton = view.findViewById(R.id.btnAddSubCategory)
+        val btnEdit: ImageButton = view.findViewById(R.id.btnEditCategory)
         val btnDelete: ImageButton = view.findViewById(R.id.btnDeleteCategory)
     }
 
@@ -32,21 +32,16 @@ class CategoryAdapter(
     override fun onBindViewHolder(holder: CategoryViewHolder, position: Int) {
         val category = categories[position]
         holder.tvName.text = category.name
-        holder.tvSubCategoryCount.text = "Tap to view sub-categories"
-        
+
         try {
             holder.colorIndicator.setBackgroundColor(Color.parseColor(category.color))
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             holder.colorIndicator.setBackgroundColor(Color.BLUE)
         }
 
-        holder.btnAddSubCategory.setOnClickListener {
-            onAddSubCategory(category)
-        }
-
-        holder.btnDelete.setOnClickListener {
-            onDelete(category)
-        }
+        holder.itemView.setOnClickListener { onEdit(category) }
+        holder.btnEdit.setOnClickListener { onEdit(category) }
+        holder.btnDelete.setOnClickListener { onDelete(category) }
     }
 
     override fun getItemCount() = categories.size

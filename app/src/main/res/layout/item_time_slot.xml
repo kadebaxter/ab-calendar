@@ -42,7 +42,10 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:padding="4dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:clipChildren="false"
             android:clipToPadding="false">
 

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/daySelectorItem"
+    android:layout_width="48dp"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_day_selector_item"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:id="@+id/tvDayName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fri"
+        android:textColor="@color/day_selector_text"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/tvDayNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:text="11"
+        android:textColor="@color/day_selector_text"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

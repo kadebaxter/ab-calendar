@@ -32,6 +32,18 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt"
+            )
+        }
+    }
 }
 
 dependencies {
@@ -56,6 +68,20 @@ dependencies {
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Google Calendar import (read-only)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.api-client:google-api-client:2.2.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.api-client:google-api-client-android:1.35.2") {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.android.gms")
+    }
+    implementation("com.google.http-client:google-http-client-gson:1.44.2") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.apis:google-api-services-calendar:v3-rev20231123-2.0.0")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

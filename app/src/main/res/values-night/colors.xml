@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="fragment_background">#121212</color>
+    <color name="calendar_header_background">#FF6B1B4A</color>
+    <color name="calendar_header_text">#FFFFFFFF</color>
+    <color name="day_selector_background">#1E1E1E</color>
+    <color name="day_selector_text">#FFE0E0E0</color>
+    <color name="day_selector_selected_stroke">#FF4FC3F7</color>
+    <color name="day_selector_selected_fill">#FF2A2A2A</color>
+    <color name="day_selector_today_fill">#554FC3F7</color>
+    <color name="agenda_day_header_background">#FF3A1730</color>
+    <color name="agenda_day_header_title">#FFFFF0F5</color>
+    <color name="agenda_day_header_subtitle">#FFD4A7BC</color>
 </resources>

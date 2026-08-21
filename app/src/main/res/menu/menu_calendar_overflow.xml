@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_filter_category"
+        android:title="@string/menu_filter_category" />
+    <item
+        android:id="@+id/action_filter_person"
+        android:title="@string/menu_filter_person" />
+    <item
+        android:id="@+id/action_clear_filters"
+        android:title="@string/menu_clear_filters" />
+    <item
+        android:id="@+id/action_sync_google"
+        android:title="@string/menu_sync_google" />
+</menu>

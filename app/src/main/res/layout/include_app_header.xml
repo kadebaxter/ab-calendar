@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/appHeader"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:background="@color/calendar_header_background"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <ImageButton
+        android:id="@+id/btnHeaderNav"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/menu_open"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_menu_hamburger" />
+
+    <LinearLayout
+        android:id="@+id/btnHeaderTitle"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:id="@+id/tvHeaderTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/calendar_header_text"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/ivHeaderChevron"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="2dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_chevron_down"
+            android:visibility="gone"
+            app:tint="@color/calendar_header_text" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/calendarViewSwitcher"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingEnd="2dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/btnViewDay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp"
+            android:text="@string/menu_view_day"
+            android:textColor="@color/calendar_header_text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btnViewWeek"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp"
+            android:text="@string/menu_view_week"
+            android:textColor="@color/calendar_header_text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btnViewMonth"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp"
+            android:text="@string/menu_view_month"
+            android:textColor="@color/calendar_header_text"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btnHeaderOverflow"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/menu_more"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_more_vert" />
+</LinearLayout>

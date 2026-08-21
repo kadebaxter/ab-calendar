@@ -2,182 +2,328 @@ package com.example.calendarnotes.ui.adapters
 
 import android.graphics.Color
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.recyclerview.widget.RecyclerView
 import com.example.calendarnotes.R
 import com.example.calendarnotes.data.models.CalendarEvent
+import com.example.calendarnotes.ui.DayScheduleScrollView
 import com.example.calendarnotes.ui.utils.EventDragHandler
 import com.example.calendarnotes.ui.utils.EventLayoutCalculator
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
-data class TimeSlot(
-    val hour: Int,
-    val events: List<CalendarEvent>
-)
-
+/**
+ * Day grid with all 24 hour rows always attached inside a [DayScheduleScrollView].
+ * Multi-hour cards live on their start-hour row and overflow into later hours.
+ */
 class DayScheduleAdapter(
-    private val recyclerView: RecyclerView,
+    private val scrollView: DayScheduleScrollView,
+    private val container: LinearLayout,
     private val baseDate: Calendar,
     private val onTimeSlotClick: (Int) -> Unit,
     private val onEventClick: (CalendarEvent) -> Unit,
     private val onEventTimeChanged: (CalendarEvent, Long, Long) -> Unit
-) : RecyclerView.Adapter<DayScheduleAdapter.TimeSlotViewHolder>() {
+) {
+    private data class HourRow(
+        val hour: Int,
+        val root: View,
+        val tvTimeLabel: TextView,
+        val eventsContainer: ViewGroup,
+        val eventContentArea: View,
+        val currentTimeIndicator: View
+    )
 
-    private var timeSlots: List<TimeSlot> = emptyList()
+    private val hourRows = mutableListOf<HourRow>()
     private var allEvents: List<CalendarEvent> = emptyList()
+    private var eventColumnsById: Map<Long, Int> = emptyMap()
     private var categoryColors: Map<Long, String> = emptyMap()
     private var isDragging = false
-    private var draggedEvent: CalendarEvent? = null
-    
+    private val eventViewsById = mutableMapOf<Long, View>()
+
+    /** Gesture started on a later hour row, forwarded to an overflowing event card. */
+    private var proxyActive = false
+    private var proxyEventView: View? = null
+    private var proxyEvent: CalendarEvent? = null
+    private var proxyMode: EventDragHandler.DragMode = EventDragHandler.DragMode.MOVE
+
+    /** Bumped on every schedule update so delayed layout posts can't add stale cards. */
+    private var scheduleEpoch: Long = 0L
+
     private val dragHandler = EventDragHandler(
-        recyclerView = recyclerView,
+        scrollParent = scrollView,
         baseDate = baseDate,
         onEventTimeChanged = onEventTimeChanged,
-        onDragStateChanged = { dragging, event ->
+        onDragStateChanged = { dragging, _ ->
             isDragging = dragging
-            draggedEvent = event
             if (!dragging) {
-                // Only refresh layout after drag ends
-                notifyDataSetChanged()
+                // Rebuild after drag so the card sits on its (possibly new) start hour.
+                renderEvents()
             }
-            // Don't call notifyDataSetChanged during drag - it destroys views
         }
     )
 
-    class TimeSlotViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvTimeLabel: TextView = view.findViewById(R.id.tvTimeLabel)
-        val eventsContainer: ViewGroup = view.findViewById(R.id.eventsContainer)
-        val eventContentArea: View = view.findViewById(R.id.eventContentArea)
-        val currentTimeIndicator: View = view.findViewById(R.id.currentTimeIndicator)
+    init {
+        buildHourRows()
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TimeSlotViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_time_slot, parent, false)
-        return TimeSlotViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: TimeSlotViewHolder, position: Int) {
-        val timeSlot = timeSlots[position]
-        
-        // Format time label
+    private fun buildHourRows() {
+        container.removeAllViews()
+        hourRows.clear()
+        val inflater = LayoutInflater.from(container.context)
         val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, timeSlot.hour)
-        calendar.set(Calendar.MINUTE, 0)
-        holder.tvTimeLabel.text = timeFormat.format(calendar.time)
 
-        // Clear previous events
-        holder.eventsContainer.removeAllViews()
+        for (hour in 0..23) {
+            val root = inflater.inflate(R.layout.item_time_slot, container, false)
+            val tvTimeLabel = root.findViewById<TextView>(R.id.tvTimeLabel)
+            val eventsContainer = root.findViewById<ViewGroup>(R.id.eventsContainer)
+            val eventContentArea = root.findViewById<View>(R.id.eventContentArea)
+            val currentTimeIndicator = root.findViewById<View>(R.id.currentTimeIndicator)
 
-        // Get all events to consider for overlap calculation
-        val eventsToDisplay = if (isDragging && draggedEvent != null) {
-            // Include the dragged event at its current position for preview
-            timeSlot.events
-        } else {
-            timeSlot.events
-        }
-
-        // Assign columns using the utility
-        val eventColumns = EventLayoutCalculator.assignColumns(eventsToDisplay)
-        val maxColumns = if (eventColumns.isEmpty()) 1 else eventColumns.values.maxOrNull()!! + 1
-
-        // Wait for layout to complete before positioning events
-        if (holder.eventsContainer.width == 0) {
-            holder.eventsContainer.post {
-                addEventsToContainer(holder, eventsToDisplay, eventColumns, maxColumns)
+            val labelCal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, 0)
             }
-        } else {
-            addEventsToContainer(holder, eventsToDisplay, eventColumns, maxColumns)
-        }
+            tvTimeLabel.text = timeFormat.format(labelCal.time)
 
-        // Make the time slot clickable to add new events
-        holder.eventContentArea.setOnClickListener {
-            if (timeSlot.events.isEmpty()) {
-                onTimeSlotClick(timeSlot.hour)
-            }
-        }
-
-        // Show current time indicator if this is today and the current hour
-        showCurrentTimeIndicator(holder, timeSlot.hour)
-    }
-
-    private fun showCurrentTimeIndicator(holder: TimeSlotViewHolder, hour: Int) {
-        val now = Calendar.getInstance()
-        val today = Calendar.getInstance()
-        today.timeInMillis = baseDate.timeInMillis
-        
-        // Check if this is today
-        val isToday = now.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                     now.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
-        
-        if (!isToday) {
-            holder.currentTimeIndicator.visibility = View.GONE
-            return
-        }
-        
-        val currentHour = now.get(Calendar.HOUR_OF_DAY)
-        val currentMinute = now.get(Calendar.MINUTE)
-        
-        // Show indicator only if current time is within this hour slot
-        if (currentHour == hour) {
-            holder.currentTimeIndicator.visibility = View.VISIBLE
-            
-            // Position the indicator based on minutes (0-59 minutes within the hour slot height)
-            holder.currentTimeIndicator.post {
-                val slotHeight = holder.eventContentArea.height
-                val minutePercent = currentMinute / 60f
-                val topMargin = (slotHeight * minutePercent).toInt()
-                
-                val params = holder.currentTimeIndicator.layoutParams as android.widget.FrameLayout.LayoutParams
-                params.topMargin = topMargin
-                holder.currentTimeIndicator.layoutParams = params
-            }
-        } else {
-            holder.currentTimeIndicator.visibility = View.GONE
-        }
-    }
-    
-    private fun addEventsToContainer(
-        holder: TimeSlotViewHolder,
-        events: List<CalendarEvent>,
-        eventColumns: Map<Int, Int>,
-        maxColumns: Int
-    ) {
-        // Clear any existing views first
-        holder.eventsContainer.removeAllViews()
-        
-        // Add events for this time slot
-        for ((index, event) in events.withIndex()) {
-            val eventView = createEventView(
-                holder,
-                event,
-                index,
-                eventColumns[index] ?: 0,
-                maxColumns
+            val row = HourRow(
+                hour = hour,
+                root = root,
+                tvTimeLabel = tvTimeLabel,
+                eventsContainer = eventsContainer,
+                eventContentArea = eventContentArea,
+                currentTimeIndicator = currentTimeIndicator
             )
-            
-            // Attach drag handler with click callback - it handles both dragging and clicking
-            dragHandler.attachToEventView(eventView, event, allEvents) { clickedEvent ->
-                onEventClick(clickedEvent)
-            }
-            
-            holder.eventsContainer.addView(eventView)
+            bindRowInteractions(row)
+            hourRows.add(row)
+            container.addView(root)
         }
     }
-    
-    private fun createEventView(
-        holder: TimeSlotViewHolder,
+
+    private fun bindRowInteractions(row: HourRow) {
+        var lastTouchY = 0f
+        var lastTouchXInContainer = 0f
+        row.eventContentArea.setOnTouchListener { v, motionEvent ->
+            when (motionEvent.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastTouchY = motionEvent.y
+                    lastTouchXInContainer = motionEvent.x - row.eventsContainer.left
+                    val height = v.height.coerceAtLeast(1)
+                    val minuteInHour = ((motionEvent.y / height) * 60f).toInt().coerceIn(0, 59)
+                    // Hit-test by time AND column so empty space beside a left-lane
+                    // event is not treated as that event.
+                    val covering = findEventCovering(
+                        hour = row.hour,
+                        minuteInHour = minuteInHour,
+                        xInEventsContainer = lastTouchXInContainer,
+                        containerWidth = row.eventsContainer.width
+                    ) ?: run {
+                        clearProxy()
+                        return@setOnTouchListener false
+                    }
+                    val startHour = eventStartHour(covering)
+                    // Same-hour cards own their own touches via the event view.
+                    if (startHour == row.hour) {
+                        clearProxy()
+                        return@setOnTouchListener false
+                    }
+                    val eventView = eventViewsById[covering.id] ?: run {
+                        clearProxy()
+                        return@setOnTouchListener false
+                    }
+                    proxyActive = true
+                    proxyEventView = eventView
+                    proxyEvent = covering
+                    proxyMode = dragModeForOverflowTouch(covering, row.hour, minuteInHour)
+                    scrollView.requestDisallowInterceptTouchEvent(true)
+                    dragHandler.dispatchTouch(
+                        eventView,
+                        motionEvent,
+                        covering,
+                        proxyMode,
+                        onEventClick
+                    )
+                }
+                MotionEvent.ACTION_MOVE,
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    if (!proxyActive) return@setOnTouchListener false
+                    val eventView = proxyEventView
+                    val event = proxyEvent
+                    if (eventView == null || event == null) {
+                        clearProxy()
+                        return@setOnTouchListener false
+                    }
+                    dragHandler.dispatchTouch(
+                        eventView,
+                        motionEvent,
+                        event,
+                        proxyMode,
+                        onEventClick
+                    )
+                    if (motionEvent.actionMasked == MotionEvent.ACTION_UP ||
+                        motionEvent.actionMasked == MotionEvent.ACTION_CANCEL
+                    ) {
+                        clearProxy()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+        row.eventContentArea.setOnClickListener {
+            // Event cards handle their own tap/drag; this is only for empty slot taps.
+            // Ignore if a drag just ended (isDragging flag can clear before click delivers).
+            if (proxyActive || isDragging || dragHandler.getCurrentDragInfo().first) {
+                return@setOnClickListener
+            }
+            val height = row.eventContentArea.height.coerceAtLeast(1)
+            val minuteInHour = ((lastTouchY / height) * 60f).toInt().coerceIn(0, 59)
+            val eventAtPoint = findEventCovering(
+                hour = row.hour,
+                minuteInHour = minuteInHour,
+                xInEventsContainer = lastTouchXInContainer,
+                containerWidth = row.eventsContainer.width
+            )
+            if (eventAtPoint != null) {
+                // Covered by an overflowing card — open only via the card's tap path.
+                return@setOnClickListener
+            }
+            onTimeSlotClick(row.hour)
+        }
+    }
+
+    private fun clearProxy() {
+        proxyActive = false
+        proxyEventView = null
+        proxyEvent = null
+        proxyMode = EventDragHandler.DragMode.MOVE
+    }
+
+    private fun eventStartHour(event: CalendarEvent): Int {
+        return Calendar.getInstance().apply { timeInMillis = event.startTime }
+            .get(Calendar.HOUR_OF_DAY)
+    }
+
+    private fun dragModeForOverflowTouch(
         event: CalendarEvent,
-        index: Int,
+        hour: Int,
+        minuteInHour: Int
+    ): EventDragHandler.DragMode {
+        val touchMs = Calendar.getInstance().apply {
+            timeInMillis = baseDate.timeInMillis
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minuteInHour)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val minsToEnd = ((event.endTime - touchMs) / 60_000L).toInt()
+        val minsFromStart = ((touchMs - event.startTime) / 60_000L).toInt()
+        return when {
+            minsToEnd <= HANDLE_ZONE_MINUTES -> EventDragHandler.DragMode.RESIZE_END
+            minsFromStart <= HANDLE_ZONE_MINUTES -> EventDragHandler.DragMode.RESIZE_START
+            else -> EventDragHandler.DragMode.MOVE
+        }
+    }
+
+    /**
+     * Event under a point in an hour row. Requires both time overlap and that [xInEventsContainer]
+     * falls inside the event's column lane — empty lanes beside a card are not hits.
+     */
+    private fun findEventCovering(
+        hour: Int,
+        minuteInHour: Int,
+        xInEventsContainer: Float,
+        containerWidth: Int
+    ): CalendarEvent? {
+        if (containerWidth <= 0) return null
+        val instant = Calendar.getInstance().apply {
+            timeInMillis = baseDate.timeInMillis
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minuteInHour)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val density = container.resources.displayMetrics.density
+
+        // Include end instant so the bottom grip of an event ending on :00/:15 still hits.
+        return allEvents
+            .filter { instant >= it.startTime && instant <= it.endTime }
+            .filter { event ->
+                val column = eventColumnsById[event.id] ?: 0
+                val totalColumns = columnCountForEvent(event)
+                val (left, right) = EventLayoutCalculator.horizontalBounds(
+                    column = column,
+                    totalColumns = totalColumns,
+                    containerWidth = containerWidth,
+                    density = density
+                )
+                xInEventsContainer >= left && xInEventsContainer < right
+            }
+            .maxByOrNull { eventColumnsById[it.id] ?: 0 }
+    }
+
+    fun updateSchedule(events: List<CalendarEvent>, colors: Map<Long, String>) {
+        scheduleEpoch++
+        clearProxy()
+        categoryColors = colors
+        // All-day (and legacy ~24h Google imports) render above the grid, not as hour blocks.
+        val timedEvents = events.filterNot { it.displaysAsAllDay() }
+        allEvents = timedEvents
+        eventColumnsById = computeEventColumns(timedEvents)
+        renderEvents()
+        refreshCurrentTimeIndicator()
+    }
+
+    private fun renderEvents() {
+        val epoch = scheduleEpoch
+        eventViewsById.clear()
+        hourRows.forEach { it.eventsContainer.removeAllViews() }
+
+        fun placeEvents() {
+            if (epoch != scheduleEpoch || isDragging) return
+            for (event in allEvents) {
+                val startHour = eventStartHour(event)
+                val row = hourRows.getOrNull(startHour) ?: continue
+                // Only host events that start on the displayed day.
+                val eventCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
+                if (eventCal.get(Calendar.YEAR) != baseDate.get(Calendar.YEAR) ||
+                    eventCal.get(Calendar.DAY_OF_YEAR) != baseDate.get(Calendar.DAY_OF_YEAR)
+                ) {
+                    continue
+                }
+                val column = eventColumnsById[event.id] ?: 0
+                val maxColumns = columnCountForEvent(event)
+                val eventView = createEventView(row, event, column, maxColumns)
+                dragHandler.attachToEventView(eventView, event, allEvents, onEventClick)
+                row.eventsContainer.addView(eventView)
+                eventViewsById[event.id] = eventView
+            }
+        }
+
+        val sampleWidth = hourRows.firstOrNull()?.eventsContainer?.width ?: 0
+        if (sampleWidth == 0) {
+            container.post { placeEvents() }
+        } else {
+            placeEvents()
+        }
+    }
+
+    private fun createEventView(
+        row: HourRow,
+        event: CalendarEvent,
         column: Int,
         maxColumns: Int
     ): View {
-        val eventView = LayoutInflater.from(holder.itemView.context)
-            .inflate(R.layout.item_schedule_event, holder.eventsContainer, false)
+        val eventView = LayoutInflater.from(row.root.context)
+            .inflate(R.layout.item_schedule_event, row.eventsContainer, false)
 
+        val textContainer = eventView.findViewById<LinearLayout>(R.id.eventTextContainer)
         val tvTitle = eventView.findViewById<TextView>(R.id.tvEventTitle)
         val tvTime = eventView.findViewById<TextView>(R.id.tvEventTime)
         val colorBar = eventView.findViewById<View>(R.id.eventColorBar)
@@ -188,21 +334,27 @@ class DayScheduleAdapter(
         val startTime = eventTimeFormat.format(Date(event.startTime))
         val endTime = eventTimeFormat.format(Date(event.endTime))
         tvTime.text = "$startTime - $endTime"
-        
-        // Calculate layout using the utility with safety check
-        val containerWidth = holder.eventsContainer.width.coerceAtLeast(1) // Prevent division by zero
-        val density = holder.itemView.context.resources.displayMetrics.density
+
+        val containerWidth = row.eventsContainer.width.coerceAtLeast(1)
+        val density = row.root.context.resources.displayMetrics.density
         val layoutInfo = EventLayoutCalculator.calculateEventLayout(
             event = event,
             column = column,
             totalColumns = maxColumns,
             containerWidth = containerWidth,
-            density = density,
-            baseDate = baseDate
+            density = density
         )
-        
-        // Apply layout
-        val layoutParams = android.widget.FrameLayout.LayoutParams(
+
+        applyEventTextLayout(
+            textContainer = textContainer,
+            tvTitle = tvTitle,
+            tvTime = tvTime,
+            heightPx = layoutInfo.heightPx,
+            widthPx = layoutInfo.widthPx,
+            density = density
+        )
+
+        val layoutParams = FrameLayout.LayoutParams(
             layoutInfo.widthPx,
             layoutInfo.heightPx
         )
@@ -210,72 +362,163 @@ class DayScheduleAdapter(
         layoutParams.leftMargin = layoutInfo.leftMarginPx
         eventView.layoutParams = layoutParams
 
-        // Set color
         applyEventColor(event, eventView, tvTitle, colorBar)
-        
+
+        val showHandles = layoutInfo.heightPx >= (36 * density)
+        eventView.findViewById<View>(R.id.resizeHandleTop)?.visibility =
+            if (showHandles) View.VISIBLE else View.GONE
+        eventView.findViewById<View>(R.id.resizeHandleBottom)?.visibility =
+            if (showHandles) View.VISIBLE else View.GONE
+
         return eventView
     }
-    
+
+    private fun applyEventTextLayout(
+        textContainer: LinearLayout,
+        tvTitle: TextView,
+        tvTime: TextView,
+        heightPx: Int,
+        widthPx: Int,
+        density: Float
+    ) {
+        val isShortCard = heightPx < (SHORT_CARD_MAX_HEIGHT_DP * density)
+        val isNarrowCard = widthPx < (INLINE_TIME_MIN_WIDTH_DP * density)
+        val showTime = !(isShortCard && isNarrowCard)
+
+        val titleParams = tvTitle.layoutParams as LinearLayout.LayoutParams
+        val timeParams = tvTime.layoutParams as LinearLayout.LayoutParams
+
+        textContainer.orientation = LinearLayout.HORIZONTAL
+        textContainer.gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+
+        val gapPx = (6 * density).toInt()
+        val textAreaWidth = (widthPx - (18 * density).toInt()).coerceAtLeast(1)
+
+        titleParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        titleParams.weight = 0f
+        titleParams.marginEnd = 0
+        tvTitle.maxLines = 1
+        tvTitle.ellipsize = android.text.TextUtils.TruncateAt.END
+
+        if (showTime) {
+            tvTime.visibility = View.VISIBLE
+            val timeMaxWidth = (textAreaWidth * 0.45f).toInt().coerceAtLeast((56 * density).toInt())
+            tvTime.maxWidth = timeMaxWidth
+            timeParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            timeParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            timeParams.weight = 0f
+            timeParams.marginStart = gapPx
+            timeParams.topMargin = 0
+            tvTime.layoutParams = timeParams
+
+            titleParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            tvTitle.maxWidth = (textAreaWidth - timeMaxWidth - gapPx).coerceAtLeast((40 * density).toInt())
+            tvTitle.layoutParams = titleParams
+        } else {
+            tvTime.visibility = View.GONE
+            tvTime.maxWidth = Int.MAX_VALUE
+            timeParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            timeParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            timeParams.weight = 0f
+            timeParams.marginStart = 0
+            timeParams.topMargin = 0
+            tvTime.layoutParams = timeParams
+
+            titleParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+            tvTitle.maxWidth = Int.MAX_VALUE
+            tvTitle.layoutParams = titleParams
+        }
+    }
+
     private fun applyEventColor(
         event: CalendarEvent,
         eventView: View,
         tvTitle: TextView,
         colorBar: View
     ) {
-        event.categoryId?.let { catId ->
-            categoryColors[catId]?.let { color ->
-                try {
-                    val colorInt = Color.parseColor(color)
-                    colorBar.setBackgroundColor(colorInt)
-                    val lightBackground = lightenColor(colorInt, 0.92f)
-                    (eventView as? com.google.android.material.card.MaterialCardView)?.setCardBackgroundColor(lightBackground)
-                    tvTitle.setTextColor(Color.BLACK)
-                } catch (e: Exception) {
-                    colorBar.setBackgroundColor(Color.BLUE)
-                    (eventView as? com.google.android.material.card.MaterialCardView)?.setCardBackgroundColor(Color.parseColor("#E3F2FD"))
-                    tvTitle.setTextColor(Color.BLACK)
-                }
+        val hex = event.categoryId?.let { categoryColors[it] } ?: DEFAULT_EVENT_COLOR
+        val colorInt = try {
+            Color.parseColor(hex)
+        } catch (_: Exception) {
+            Color.parseColor(DEFAULT_EVENT_COLOR)
+        }
+        colorBar.setBackgroundColor(colorInt)
+        val bodyFill = lightenColor(colorInt, 0.72f)
+        (eventView as? com.google.android.material.card.MaterialCardView)
+            ?.setCardBackgroundColor(bodyFill)
+        tvTitle.setTextColor(darkenColor(colorInt, 0.35f))
+        eventView.findViewById<TextView>(R.id.tvEventTime)
+            ?.setTextColor(darkenColor(colorInt, 0.2f))
+    }
+
+    private fun computeEventColumns(events: List<CalendarEvent>): Map<Long, Int> {
+        val sorted = events.sortedWith(compareBy({ it.startTime }, { it.id }))
+        val columnsByIndex = EventLayoutCalculator.assignColumns(sorted)
+        return sorted.mapIndexed { index, event ->
+            event.id to (columnsByIndex[index] ?: 0)
+        }.toMap()
+    }
+
+    private fun columnCountForEvent(event: CalendarEvent): Int {
+        val overlapping = allEvents.filter { candidate ->
+            EventLayoutCalculator.eventsOverlap(candidate, event)
+        }
+        if (overlapping.isEmpty()) return 1
+        return overlapping.maxOf { eventColumnsById[it.id] ?: 0 } + 1
+    }
+
+    fun refreshCurrentTimeIndicator() {
+        val now = Calendar.getInstance()
+        val isToday = now.get(Calendar.YEAR) == baseDate.get(Calendar.YEAR) &&
+            now.get(Calendar.DAY_OF_YEAR) == baseDate.get(Calendar.DAY_OF_YEAR)
+        val currentHour = now.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = now.get(Calendar.MINUTE)
+
+        hourRows.forEach { row ->
+            if (!isToday || row.hour != currentHour) {
+                row.currentTimeIndicator.visibility = View.GONE
+                return@forEach
+            }
+            row.currentTimeIndicator.visibility = View.VISIBLE
+            row.currentTimeIndicator.post {
+                val slotHeight = row.eventContentArea.height
+                if (slotHeight <= 0) return@post
+                val topMargin = (slotHeight * (currentMinute / 60f)).toInt()
+                val params = row.currentTimeIndicator.layoutParams as FrameLayout.LayoutParams
+                params.topMargin = topMargin
+                row.currentTimeIndicator.layoutParams = params
             }
         }
     }
 
-    override fun getItemCount() = timeSlots.size
-
-    fun updateSchedule(events: List<CalendarEvent>, colors: Map<Long, String>) {
-        categoryColors = colors
-        allEvents = events
-        
-        // Create time slots for 24 hours
-        val slots = mutableListOf<TimeSlot>()
-        for (hour in 0..23) {
-            val hourEvents = events.filter { event ->
-                val eventCalendar = Calendar.getInstance()
-                eventCalendar.timeInMillis = event.startTime
-                eventCalendar.get(Calendar.HOUR_OF_DAY) == hour
-            }.sortedBy { it.startTime }
-            
-            slots.add(TimeSlot(hour, hourEvents))
+    fun scrollToHour(hour: Int) {
+        val row = hourRows.getOrNull(hour.coerceIn(0, 23)) ?: return
+        scrollView.post {
+            scrollView.scrollTo(0, row.root.top)
         }
-        
-        timeSlots = slots
-        notifyDataSetChanged()
     }
 
-    fun refreshCurrentTimeIndicator() {
-        // Refresh only the visible items to update the current time line
-        notifyDataSetChanged()
+    companion object {
+        private const val SHORT_CARD_MAX_HEIGHT_DP = 45
+        private const val INLINE_TIME_MIN_WIDTH_DP = 148
+        private const val DEFAULT_EVENT_COLOR = "#9E9E9E"
+        private const val HANDLE_ZONE_MINUTES = 20
     }
 
     private fun lightenColor(color: Int, factor: Float): Int {
-        // Blend the color with white to make it much lighter
         val red = Color.red(color)
         val green = Color.green(color)
         val blue = Color.blue(color)
-        
         val newRed = (red + (255 - red) * factor).toInt()
         val newGreen = (green + (255 - green) * factor).toInt()
         val newBlue = (blue + (255 - blue) * factor).toInt()
-        
         return Color.rgb(newRed, newGreen, newBlue)
+    }
+
+    private fun darkenColor(color: Int, factor: Float): Int {
+        val red = (Color.red(color) * (1f - factor)).toInt().coerceIn(0, 255)
+        val green = (Color.green(color) * (1f - factor)).toInt().coerceIn(0, 255)
+        val blue = (Color.blue(color) * (1f - factor)).toInt().coerceIn(0, 255)
+        return Color.rgb(red, green, blue)
     }
 }

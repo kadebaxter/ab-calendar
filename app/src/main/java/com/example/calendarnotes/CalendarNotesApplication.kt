@@ -3,12 +3,35 @@ package com.example.calendarnotes
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.os.Build
+import com.example.calendarnotes.data.AppPreferences
+import com.example.calendarnotes.data.repository.CalendarNotesRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class CalendarNotesApplication : Application() {
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    lateinit var repository: CalendarNotesRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
+        repository = CalendarNotesRepository(this)
+        applicationScope.launch {
+            repository.refreshAll()
+        }
+        AppPreferences(this).applyTheme()
         createNotificationChannel()
+    }
+
+    companion object {
+        fun from(context: Context): CalendarNotesApplication {
+            return context.applicationContext as CalendarNotesApplication
+        }
     }
 
     private fun createNotificationChannel() {

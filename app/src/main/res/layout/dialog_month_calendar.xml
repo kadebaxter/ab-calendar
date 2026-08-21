@@ -41,84 +41,13 @@
 
     </LinearLayout>
 
-    <!-- Day of Week Headers -->
+    <!-- Day of Week Headers (filled in code based on week-start setting) -->
     <LinearLayout
+        android:id="@+id/weekdayHeaderRowDialog"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Sun"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Mon"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Tue"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Wed"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Thu"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Fri"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Sat"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:textColor="@android:color/darker_gray" />
-
-    </LinearLayout>
+        android:layout_marginBottom="8dp" />
 
     <!-- Calendar Grid -->
     <androidx.recyclerview.widget.RecyclerView

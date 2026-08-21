@@ -1,6 +1,5 @@
 package com.example.calendarnotes.ui.adapters
 
-import android.graphics.Color
 import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
@@ -8,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.calendarnotes.R
-import java.util.*
+import java.util.Calendar
 
 data class CalendarDay(
     val dayOfMonth: Int,
@@ -26,6 +25,7 @@ class MonthCalendarAdapter(
     private var days: List<CalendarDay> = emptyList()
 
     class DayViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val dayCell: View = view.findViewById(R.id.dayCell)
         val tvDayNumber: TextView = view.findViewById(R.id.tvDayNumber)
         val eventIndicator: View = view.findViewById(R.id.eventIndicator)
     }
@@ -38,119 +38,108 @@ class MonthCalendarAdapter(
     override fun onBindViewHolder(holder: DayViewHolder, position: Int) {
         val day = days[position]
 
-        if (day.isCurrentMonth) {
-            holder.tvDayNumber.text = day.dayOfMonth.toString()
-            holder.tvDayNumber.alpha = 1.0f
-        } else {
-            holder.tvDayNumber.text = day.dayOfMonth.toString()
-            holder.tvDayNumber.alpha = 0.3f
-        }
+        holder.tvDayNumber.text = day.dayOfMonth.toString()
+        holder.tvDayNumber.alpha = if (day.isCurrentMonth) 1.0f else 0.35f
+        holder.tvDayNumber.setTypeface(null, if (day.isToday || day.isSelected) Typeface.BOLD else Typeface.NORMAL)
 
-        // Highlight today
-        if (day.isToday) {
-            holder.tvDayNumber.setBackgroundColor(Color.parseColor("#FFB3E5FC"))
-            holder.tvDayNumber.setTextColor(Color.WHITE)
-            holder.tvDayNumber.setTypeface(null, Typeface.BOLD)
-        } else if (day.isSelected) {
-            holder.tvDayNumber.setBackgroundColor(Color.parseColor("#FFB3E5FC"))
-            holder.tvDayNumber.setTextColor(Color.WHITE)
-            holder.tvDayNumber.setTypeface(null, Typeface.BOLD)
-        } else {
-            holder.tvDayNumber.setBackgroundColor(Color.TRANSPARENT)
-            holder.tvDayNumber.setTextColor(Color.WHITE)
-            holder.tvDayNumber.setTypeface(null, Typeface.NORMAL)
-        }
+        // Same semantics as day strip: activated = today fill, selected = cyan border
+        holder.dayCell.isActivated = day.isToday
+        holder.dayCell.isSelected = day.isSelected
 
-        // Show event indicator
-        if (day.hasEvents && day.isCurrentMonth) {
-            holder.eventIndicator.visibility = View.VISIBLE
-        } else {
-            holder.eventIndicator.visibility = View.GONE
-        }
+        holder.eventIndicator.visibility =
+            if (day.hasEvents && day.isCurrentMonth) View.VISIBLE else View.GONE
 
-        holder.tvDayNumber.setOnClickListener {
+        holder.dayCell.setOnClickListener {
             onDayClick(day.date)
         }
     }
 
     override fun getItemCount() = days.size
 
-    fun updateCalendar(year: Int, month: Int, selectedDate: Calendar, eventsMap: Map<String, Boolean>) {
+    fun updateCalendar(
+        year: Int,
+        month: Int,
+        selectedDate: Calendar,
+        eventsMap: Map<String, Boolean>,
+        weekStartDay: Int = Calendar.SUNDAY
+    ) {
         val calendar = Calendar.getInstance()
         calendar.set(year, month, 1)
-        
-        val firstDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sunday
+
+        val firstDow = calendar.get(Calendar.DAY_OF_WEEK)
+        val leadingDays = (firstDow - weekStartDay + 7) % 7
         val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-        
-        // Get previous month info
+
         val prevMonthCalendar = calendar.clone() as Calendar
         prevMonthCalendar.add(Calendar.MONTH, -1)
         val daysInPrevMonth = prevMonthCalendar.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-        val today = Calendar.getInstance()
+        val todayStart = DaySelectorAdapter.startOfDayMillis(Calendar.getInstance())
+        val selectedStart = DaySelectorAdapter.startOfDayMillis(selectedDate)
         val daysList = mutableListOf<CalendarDay>()
 
-        // Add days from previous month
-        for (i in 0 until firstDayOfWeek) {
-            val dayNum = daysInPrevMonth - firstDayOfWeek + i + 1
+        for (i in 0 until leadingDays) {
+            val dayNum = daysInPrevMonth - leadingDays + i + 1
             val dayCalendar = Calendar.getInstance()
-            dayCalendar.set(prevMonthCalendar.get(Calendar.YEAR), prevMonthCalendar.get(Calendar.MONTH), dayNum)
-            
+            dayCalendar.set(
+                prevMonthCalendar.get(Calendar.YEAR),
+                prevMonthCalendar.get(Calendar.MONTH),
+                dayNum
+            )
+            DaySelectorAdapter.startOfDay(dayCalendar)
+            val dayStart = dayCalendar.timeInMillis
+
             daysList.add(
                 CalendarDay(
                     dayOfMonth = dayNum,
                     isCurrentMonth = false,
-                    isToday = false,
-                    isSelected = false,
+                    isToday = dayStart == todayStart,
+                    isSelected = dayStart == selectedStart,
                     hasEvents = false,
                     date = dayCalendar
                 )
             )
         }
 
-        // Add days from current month
         for (day in 1..daysInMonth) {
             val dayCalendar = Calendar.getInstance()
             dayCalendar.set(year, month, day)
-            
-            val isToday = today.get(Calendar.YEAR) == year &&
-                    today.get(Calendar.MONTH) == month &&
-                    today.get(Calendar.DAY_OF_MONTH) == day
-            
-            val isSelected = selectedDate.get(Calendar.YEAR) == year &&
-                    selectedDate.get(Calendar.MONTH) == month &&
-                    selectedDate.get(Calendar.DAY_OF_MONTH) == day
-            
+            DaySelectorAdapter.startOfDay(dayCalendar)
+            val dayStart = dayCalendar.timeInMillis
+
             val dateKey = "$year-${month + 1}-$day"
-            val hasEvents = eventsMap[dateKey] == true
-            
             daysList.add(
                 CalendarDay(
                     dayOfMonth = day,
                     isCurrentMonth = true,
-                    isToday = isToday,
-                    isSelected = isSelected,
-                    hasEvents = hasEvents,
+                    isToday = dayStart == todayStart,
+                    isSelected = dayStart == selectedStart,
+                    hasEvents = eventsMap[dateKey] == true,
                     date = dayCalendar
                 )
             )
         }
 
-        // Add days from next month to fill the grid
-        val remainingDays = 42 - daysList.size // 6 rows * 7 days
+        val remainingDays = 42 - daysList.size
         val nextMonthCalendar = calendar.clone() as Calendar
         nextMonthCalendar.add(Calendar.MONTH, 1)
-        
+
         for (day in 1..remainingDays) {
             val dayCalendar = Calendar.getInstance()
-            dayCalendar.set(nextMonthCalendar.get(Calendar.YEAR), nextMonthCalendar.get(Calendar.MONTH), day)
-            
+            dayCalendar.set(
+                nextMonthCalendar.get(Calendar.YEAR),
+                nextMonthCalendar.get(Calendar.MONTH),
+                day
+            )
+            DaySelectorAdapter.startOfDay(dayCalendar)
+            val dayStart = dayCalendar.timeInMillis
+
             daysList.add(
                 CalendarDay(
                     dayOfMonth = day,
                     isCurrentMonth = false,
-                    isToday = false,
-                    isSelected = false,
+                    isToday = dayStart == todayStart,
+                    isSelected = dayStart == selectedStart,
                     hasEvents = false,
                     date = dayCalendar
                 )

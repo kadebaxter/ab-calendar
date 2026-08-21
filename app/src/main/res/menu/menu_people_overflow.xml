@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:title="@string/menu_sort">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/action_sort_name"
+                    android:title="@string/menu_sort_name" />
+                <item
+                    android:id="@+id/action_sort_status"
+                    android:title="@string/menu_sort_status" />
+            </group>
+        </menu>
+    </item>
+    <item
+        android:id="@+id/action_filter_status"
+        android:title="@string/menu_filter_status" />
+    <item
+        android:id="@+id/action_clear_status_filter"
+        android:title="@string/menu_clear_filters" />
+</menu>
